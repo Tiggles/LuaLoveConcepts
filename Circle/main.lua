@@ -19,36 +19,10 @@ function love.load()
 end
 
 function love.update(dt)
-    movingDown = false
-    movingUp = false
-    movingLeft = false
-    movingRight = false
-    horisontalStalling = false
-    verticalStalling = false
     for i = 1, #targets do
         local target = targets[i]
         local entity = entities[i]
-        local distance = math.sqrt(target.x * entity.x + target.y * entity.y)
-        if entity.x < target.x then
-            entity:moveHorisontally(dt, false);
-            movingRight = true
-        elseif entity.x > target.x then
-            entity:moveHorisontally(-dt, false);
-            movingLeft = true
-        else
-            entity:moveHorisontally(dt, true)
-            horisontalStalling = true
-        end
-        if entity.y < target.y then
-            entity:moveVertically(dt, false);
-            movingDown = true
-        elseif entity.y > target.y then
-            entity:moveVertically(-dt, false);
-            movingUp = true
-        else
-            entity:moveVertically(dt, true)
-            verticalStalling = true
-        end
+        entity:move(dt, target, 1)
     end
 end
 
@@ -60,13 +34,8 @@ function love.draw()
         love.graphics.rectangle( "fill", target.x, target.y, 1, 1 )
         love.graphics.setColor(1,1,1)
         love.graphics.rectangle( "fill", entity.x, entity.y, 1, 1 )
+        love.graphics.print( "Dist: " .. tostring(math.sqrt(math.pow(target.x - entity.x, 2) + math.pow(target.y - entity.y, 2))) , 20, 50)
     end
-    love.graphics.print( "Moving right: " .. tostring(movingRight), 20, 20)
-    love.graphics.print( "Moving left: " .. tostring(movingLeft), 20, 30)
-    love.graphics.print( "Moving up: " .. tostring(movingUp), 20, 40)
-    love.graphics.print( "Moving down: " .. tostring(movingDown), 20, 50)
-    love.graphics.print( "Stalling h: " .. tostring(horisontalStalling), 20, 60)
-    love.graphics.print( "Stalling v: " .. tostring(verticalStalling), 20, 70)
     love.graphics.print( "Vel x: " .. tostring(entities[1].velocity.speedX) , 20, 80)
     love.graphics.print( "Vel y: " .. tostring(entities[1].velocity.speedY) , 20, 90)
 end
