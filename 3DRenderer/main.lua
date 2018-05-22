@@ -53,14 +53,7 @@ function Matrix3:transform(v)
     )
 end
 
-
-
-function love.load()
-    width = 800
-    height = 800
-    love.window.setMode(width, height)
-    horizontalAngle = 0
-    verticalAngle = 0
+function newTetrahedron()
     tetrahedron = {}
     table.insert(tetrahedron, Triangle:new(
         Vertex:new(100.0, 100.0, 100.0),
@@ -78,18 +71,62 @@ function love.load()
         Vertex:new(-100.0, 100.0, -100.0),
         Vertex:new(100.0, -100.0, -100.0),
         Vertex:new(-100.0, -100.0, 100.0), { r = 0, g = 0, b = 1}))
+    return tetrahedron
+end
+
+function love.load()
+    width = 800
+    height = 800
+    love.window.setMode(width, height)
+    horizontalAngle = 0
+    verticalAngle = 0
+    tetrahedron = newTetrahedron()
 end
 
 function love.update(dt)
     if love.keyboard.isDown("escape") then
         love.event.quit()
     end
+    local left = love.keyboard.isDown("a")
+    local right = love.keyboard.isDown("d")
+    local inwards = love.keyboard.isDown("q")
+    local outwards = love.keyboard.isDown("e")
+    local up = love.keyboard.isDown("w")
+    local down = love.keyboard.isDown("s")
+    local reset = love.keyboard.isDown("r")
+    if reset then tetrahedron = newTetrahedron() end
+    if inwards or outwards then
+        local sign = 0;
+        if inwards then sign = sign + 1 end
+        if outwards then sign = sign - 1 end
+        for i = 1, #tetrahedron do
+            tetrahedron[i].v1.z = tetrahedron[i].v1.z + sign * dt * 100
+            tetrahedron[i].v2.z = tetrahedron[i].v2.z + sign * dt * 100
+            tetrahedron[i].v3.z = tetrahedron[i].v3.z + sign * dt * 100
+        end
+    end
+    if left or right then
+        local sign = 0;
+        if left then sign = sign + 1 end
+        if right then sign = sign - 1 end
+        for i = 1, #tetrahedron do
+            tetrahedron[i].v1.x = tetrahedron[i].v1.x + sign * dt * 100
+            tetrahedron[i].v2.x = tetrahedron[i].v2.x + sign * dt * 100
+            tetrahedron[i].v3.x = tetrahedron[i].v3.x + sign * dt * 100
+        end
+    end
+    if up or down then
+        local sign = 0;
+        if up then sign = sign + 1 end
+        if down then sign = sign - 1 end
+        for i = 1, #tetrahedron do
+            tetrahedron[i].v1.y = tetrahedron[i].v1.y + sign * dt * 100
+            tetrahedron[i].v2.y = tetrahedron[i].v2.y + sign * dt * 100
+            tetrahedron[i].v3.y = tetrahedron[i].v3.y + sign * dt * 100
+        end
+    end
     horizontalAngle = (horizontalAngle + dt * 40) % 360
     verticalAngle = (verticalAngle + dt * 20) % 360
-end
-
-function love.draw()
-    love.graphics.setBackgroundColor(0, 0,0, 0)
     local heading = math.rad(horizontalAngle);
     headingTransform = Matrix3:new({
         math.cos(heading), 0.0, -math.sin(heading),
@@ -105,11 +142,15 @@ function love.draw()
     })
 
 
-    local transformation = Matrix3:new(headingTransform * pitchTransform)
-    local zBuffer = {}
+    transformation = Matrix3:new(headingTransform * pitchTransform)
+    zBuffer = {}
     for i = 1, width * height do
         zBuffer[i] = -math.huge
     end
+end
+
+function love.draw()
+    love.graphics.setBackgroundColor(0, 0,0, 0)
     for i = 1, #tetrahedron do
         local triangle = tetrahedron[i]
         local v1 = transformation:transform(triangle.v1)
