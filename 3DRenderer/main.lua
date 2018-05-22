@@ -81,6 +81,8 @@ function love.load()
     horizontalAngle = 0
     verticalAngle = 0
     tetrahedron = newTetrahedron()
+    asWireFrame = false
+    nextWireframetransition = love.timer.getTime()
 end
 
 function love.update(dt)
@@ -94,6 +96,11 @@ function love.update(dt)
     local up = love.keyboard.isDown("w")
     local down = love.keyboard.isDown("s")
     local reset = love.keyboard.isDown("r")
+    local wireframe = love.keyboard.isDown("space")
+    if wireframe and love.timer.getTime() > nextWireframetransition then
+        asWireFrame = not asWireFrame
+        nextWireframetransition = love.timer.getTime() + 0.5
+    end
     if reset then tetrahedron = newTetrahedron() end
     if inwards or outwards then
         local sign = 0;
@@ -149,6 +156,13 @@ function love.update(dt)
     end
 end
 
+function drawWireFrame(v1, v2, v3)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.line(v1.x, v1.y, v2.x, v2.y)
+    love.graphics.line(v2.x, v2.y, v3.x, v3.y)
+    love.graphics.line(v3.x, v3.y, v1.x, v1.y)
+end
+
 function love.draw()
     love.graphics.setBackgroundColor(0, 0,0, 0)
     for i = 1, #tetrahedron do
@@ -164,36 +178,39 @@ function love.draw()
         v3.x = v3.x + width / 2.0
         v3.y = v3.y + height / 2.0
 
-        local ab = Vertex:new(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z)
-        local ac = Vertex:new(v3.x - v1.x, v3.y - v1.y, v3.z - v1.z)
-        local normal = Vertex:new(
-            ab.y * ac.z - ab.z * ac.y,
-            ab.z * ac.x - ab.x * ac.z,
-            ab.x * ac.y - ab.y * ac.x
-        )
-        local normalLength = math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
-        normal.x = normal.x / normalLength
-        normal.y = normal.y / normalLength
-        normal.z = normal.z / normalLength
-        local angleCos = math.abs(normal.z)
-
-        local minX = math.floor(math.max(0.0, math.ceil(math.min(v1.x, math.min(v2.x, v3.x)))))
-        local maxX = math.floor(math.min((width - 1), math.floor(math.max(v1.x, math.max(v2.x, v3.x)))))
-        local minY = math.floor(math.max(0.0, math.ceil(math.min(v1.y, math.min(v2.y, v3.y)))))
-        local maxY = math.floor(math.min((height - 1), math.floor(math.max(v1.y, math.max(v2.y, v3.y)))))
-        local triangleArea = (v1.y - v3.y) * (v2.x - v3.x) + (v2.y - v3.y) * (v3.x - v1.x)
-        for y = minY, maxY do
-            for x = minX, maxX do
-                local b1 = ((y - v3.y) * (v2.x - v3.x) + (v2.y - v3.y) * (v3.x - x)) / triangleArea
-                local b2 = ((y - v1.y) * (v3.x - v1.x) + (v3.y - v1.y) * (v1.x - x)) / triangleArea
-                local b3 = ((y - v2.y) * (v1.x - v2.x) + (v1.y - v2.y) * (v2.x - x)) / triangleArea
-                if b1 >= 0.0 and b1 <= 1.0 and b2 >= 0.0 and b2 <= 1.0 and b3 >= 0.0 and b3 <= 1.0 then
-                    local depth = b1 * v1.z + b2 * v2.z + b3 * v3.z
-                    local zIndex = y * width + x
-                    if (zBuffer[zIndex] < depth) then
-                        love.graphics.setColor(getShade(triangle.color, angleCos))
-                        love.graphics.points(x, y)
-                        zBuffer[zIndex] = depth
+        if asWireFrame then
+            drawWireFrame(v1, v2, v3)
+        else 
+            local ab = Vertex:new(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z)
+            local ac = Vertex:new(v3.x - v1.x, v3.y - v1.y, v3.z - v1.z)
+            local normal = Vertex:new(
+                ab.y * ac.z - ab.z * ac.y,
+                ab.z * ac.x - ab.x * ac.z,
+                ab.x * ac.y - ab.y * ac.x
+            )
+            local normalLength = math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
+            normal.x = normal.x / normalLength
+            normal.y = normal.y / normalLength
+            normal.z = normal.z / normalLength
+            local angleCos = math.abs(normal.z)
+            local minX = math.floor(math.max(0.0, math.ceil(math.min(v1.x, math.min(v2.x, v3.x)))))
+            local maxX = math.floor(math.min((width - 1), math.floor(math.max(v1.x, math.max(v2.x, v3.x)))))
+            local minY = math.floor(math.max(0.0, math.ceil(math.min(v1.y, math.min(v2.y, v3.y)))))
+            local maxY = math.floor(math.min((height - 1), math.floor(math.max(v1.y, math.max(v2.y, v3.y)))))
+            local triangleArea = (v1.y - v3.y) * (v2.x - v3.x) + (v2.y - v3.y) * (v3.x - v1.x)
+            for y = minY, maxY do
+                for x = minX, maxX do
+                    local b1 = ((y - v3.y) * (v2.x - v3.x) + (v2.y - v3.y) * (v3.x - x)) / triangleArea
+                    local b2 = ((y - v1.y) * (v3.x - v1.x) + (v3.y - v1.y) * (v1.x - x)) / triangleArea
+                    local b3 = ((y - v2.y) * (v1.x - v2.x) + (v1.y - v2.y) * (v2.x - x)) / triangleArea
+                    if b1 >= 0.0 and b1 <= 1.0 and b2 >= 0.0 and b2 <= 1.0 and b3 >= 0.0 and b3 <= 1.0 then
+                        local depth = b1 * v1.z + b2 * v2.z + b3 * v3.z
+                        local zIndex = y * width + x
+                        if (zBuffer[zIndex] < depth) then
+                            love.graphics.setColor(getShade(triangle.color, angleCos))
+                            love.graphics.points(x, y)
+                            zBuffer[zIndex] = depth
+                        end
                     end
                 end
             end
