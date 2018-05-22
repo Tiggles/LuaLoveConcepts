@@ -150,7 +150,7 @@ function love.draw()
                     local depth = b1 * v1.z + b2 * v2.z + b3 * v3.z
                     local zIndex = y * width + x
                     if (zBuffer[zIndex] < depth) then
-                        love.graphics.setColor(triangle.color.r, triangle.color.g, triangle.color.b)
+                        love.graphics.setColor(getShade(triangle.color, angleCos))
                         love.graphics.points(x, y)
                         zBuffer[zIndex] = depth
                     end
@@ -159,3 +159,15 @@ function love.draw()
         end
     end
 end
+
+function getShade(color, shade)
+    local redLinear = math.pow(color.r, 2.4) * shade
+    local greenLinear = math.pow(color.g, 2.4) * shade
+    local blueLinear = math.pow(color.b, 2.4) * shade
+    local red = math.pow(redLinear, 1 / 2.4)
+    local green = math.pow(greenLinear, 1 / 2.4)
+    local blue = math.pow(blueLinear, 1 / 2.4)
+    return red, green, blue
+end
+
+function inflate() end
