@@ -10,6 +10,12 @@ function Vertex:new(x, y, z)
 	return setmetatable(v, self)
 end
 
+function Vertex:toCenter(width, height)
+    self.x = self.x + width / 2.0 
+    self.y = self.y + height / 2.0
+    return self
+end
+
 local Triangle = {}
 
 function Triangle:new(v1, v2, v3, color)
@@ -74,6 +80,11 @@ function newTetrahedron()
     return tetrahedron
 end
 
+
+local camera = {
+    250, 250, 250
+}
+
 function love.load()
     width = 800
     height = 800
@@ -102,6 +113,7 @@ function love.update(dt)
         nextWireframetransition = love.timer.getTime() + 0.5
     end
     if reset then tetrahedron = newTetrahedron() end
+    -- following controls are currently worthless
     if inwards or outwards then
         local sign = 0;
         if inwards then sign = sign + 1 end
@@ -157,63 +169,67 @@ function love.update(dt)
 end
 
 function drawWireFrame(v1, v2, v3)
-    love.graphics.setColor(1, 1, 1)
     love.graphics.line(v1.x, v1.y, v2.x, v2.y)
     love.graphics.line(v2.x, v2.y, v3.x, v3.y)
     love.graphics.line(v3.x, v3.y, v1.x, v1.y)
 end
 
+function scaleBy(scale, v)
+    v.x = v.x * scale
+    v.y = v.y * scale
+    v.z = v.z * scale
+end
+
+function drawWithDepthBuffer(v1, v2, v3, color)
+    local ab = Vertex:new(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z)
+    local ac = Vertex:new(v3.x - v1.x, v3.y - v1.y, v3.z - v1.z)
+    local normal = Vertex:new(
+        ab.y * ac.z - ab.z * ac.y,
+        ab.z * ac.x - ab.x * ac.z,
+        ab.x * ac.y - ab.y * ac.x
+    )
+    local normalLength = math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
+    normal.x = normal.x / normalLength
+    normal.y = normal.y / normalLength
+    normal.z = normal.z / normalLength
+    local angleCos = math.abs(normal.z)
+    local minX = math.floor(math.max(0.0, math.ceil(math.min(v1.x, math.min(v2.x, v3.x)))))
+    local maxX = math.floor(math.min((width - 1), math.floor(math.max(v1.x, math.max(v2.x, v3.x)))))
+    local minY = math.floor(math.max(0.0, math.ceil(math.min(v1.y, math.min(v2.y, v3.y)))))
+    local maxY = math.floor(math.min((height - 1), math.floor(math.max(v1.y, math.max(v2.y, v3.y)))))
+    local triangleArea = (v1.y - v3.y) * (v2.x - v3.x) + (v2.y - v3.y) * (v3.x - v1.x)
+    for y = minY, maxY do
+        for x = minX, maxX do
+            local b1 = ((y - v3.y) * (v2.x - v3.x) + (v2.y - v3.y) * (v3.x - x)) / triangleArea
+            local b2 = ((y - v1.y) * (v3.x - v1.x) + (v3.y - v1.y) * (v1.x - x)) / triangleArea
+            local b3 = ((y - v2.y) * (v1.x - v2.x) + (v1.y - v2.y) * (v2.x - x)) / triangleArea
+            if b1 >= 0.0 and b1 <= 1.0 and b2 >= 0.0 and b2 <= 1.0 and b3 >= 0.0 and b3 <= 1.0 then
+                local depth = b1 * v1.z + b2 * v2.z + b3 * v3.z
+                local zIndex = y * width + x
+                if (zBuffer[zIndex] < depth) then
+                    love.graphics.setColor(getShade(color, angleCos))
+                    love.graphics.points(x, y)
+                    zBuffer[zIndex] = depth
+                end
+            end
+        end
+    end
+end
+
 function love.draw()
     love.graphics.setBackgroundColor(0, 0,0, 0)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(love.timer.getFPS(), 10, 10)
     for i = 1, #tetrahedron do
         local triangle = tetrahedron[i]
-        local v1 = transformation:transform(triangle.v1)
-        local v2 = transformation:transform(triangle.v2)
-        local v3 = transformation:transform(triangle.v3)
-        
-        v1.x = v1.x + width / 2.0
-        v1.y = v1.y + height / 2.0
-        v2.x = v2.x + width / 2.0
-        v2.y = v2.y + height / 2.0
-        v3.x = v3.x + width / 2.0
-        v3.y = v3.y + height / 2.0
+        local v1 = transformation:transform(triangle.v1):toCenter(width, height)
+        local v2 = transformation:transform(triangle.v2):toCenter(width, height)
+        local v3 = transformation:transform(triangle.v3):toCenter(width, height)
 
         if asWireFrame then
             drawWireFrame(v1, v2, v3)
-        else 
-            local ab = Vertex:new(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z)
-            local ac = Vertex:new(v3.x - v1.x, v3.y - v1.y, v3.z - v1.z)
-            local normal = Vertex:new(
-                ab.y * ac.z - ab.z * ac.y,
-                ab.z * ac.x - ab.x * ac.z,
-                ab.x * ac.y - ab.y * ac.x
-            )
-            local normalLength = math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
-            normal.x = normal.x / normalLength
-            normal.y = normal.y / normalLength
-            normal.z = normal.z / normalLength
-            local angleCos = math.abs(normal.z)
-            local minX = math.floor(math.max(0.0, math.ceil(math.min(v1.x, math.min(v2.x, v3.x)))))
-            local maxX = math.floor(math.min((width - 1), math.floor(math.max(v1.x, math.max(v2.x, v3.x)))))
-            local minY = math.floor(math.max(0.0, math.ceil(math.min(v1.y, math.min(v2.y, v3.y)))))
-            local maxY = math.floor(math.min((height - 1), math.floor(math.max(v1.y, math.max(v2.y, v3.y)))))
-            local triangleArea = (v1.y - v3.y) * (v2.x - v3.x) + (v2.y - v3.y) * (v3.x - v1.x)
-            for y = minY, maxY do
-                for x = minX, maxX do
-                    local b1 = ((y - v3.y) * (v2.x - v3.x) + (v2.y - v3.y) * (v3.x - x)) / triangleArea
-                    local b2 = ((y - v1.y) * (v3.x - v1.x) + (v3.y - v1.y) * (v1.x - x)) / triangleArea
-                    local b3 = ((y - v2.y) * (v1.x - v2.x) + (v1.y - v2.y) * (v2.x - x)) / triangleArea
-                    if b1 >= 0.0 and b1 <= 1.0 and b2 >= 0.0 and b2 <= 1.0 and b3 >= 0.0 and b3 <= 1.0 then
-                        local depth = b1 * v1.z + b2 * v2.z + b3 * v3.z
-                        local zIndex = y * width + x
-                        if (zBuffer[zIndex] < depth) then
-                            love.graphics.setColor(getShade(triangle.color, angleCos))
-                            love.graphics.points(x, y)
-                            zBuffer[zIndex] = depth
-                        end
-                    end
-                end
-            end
+        else
+            drawWithDepthBuffer(v1, v2, v3, triangle.color)
         end
     end
 end
