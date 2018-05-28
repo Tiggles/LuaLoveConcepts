@@ -60,7 +60,7 @@ function Matrix3:transform(v)
 end
 
 function newSquare()
-    square = {}
+    local square = {}
     table.insert(square, Triangle:new(
         Vertex:new(100.0, 100.0, 100.0),
         Vertex:new(-100.0, -100.0, 100.0),
@@ -86,7 +86,7 @@ function love.load()
     love.window.setMode(width, height)
     verticalAngle = 0
     horizontalAngle = 0
-    tetrahedron = newSquare()
+    square = newSquare()
 end
 
 function love.update(dt)
